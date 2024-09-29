@@ -1,0 +1,582 @@
+/*
+ *
+ *  
+ Names : 
+ 
+ 1- Diaa Ahmed Riad
+ 2- Raed Abd-ElHakim
+ 3- Hazem Ayman
+ 4- Mustafa nasr-Eldein
+ 5- Eslam Mansour
+ 
+ * Created: 12/22/2023 1:34:01 AM
+ * Author: dell
+ */
+
+#include <mega16.h>
+#include <alcd.h>
+#include <delay.h>
+// GLobal variables 
+char button; //avariable to store the operation value of the keypad
+int  number;  //variable stor the address of the eepron which is the ID
+char start = 0; //flag
+char hundreds,tens,units;   // to calculate the number enetered
+char EEnum;                 //the product of the modulus operation to store the data stored in the eeprom //EEnum = number%256;
+char re_enter_store;        // to store the rentered new pw
+
+
+
+//keypad Function
+unsigned char getnumberKP ()
+{
+    while (1)
+        {
+        PORTA.0 = 0;
+        PORTA.1 = 1;
+        PORTA.2 = 1;
+        if (PINA.3 == 0)    //Returns number one
+            {
+            while (PINA.3 == 0);
+            return 1;
+            }
+        if (PINA.4 == 0)   //Returns number four
+            {
+            while (PINA.4 == 0);
+            return 4;
+            }
+        if (PINA.5 == 0)    //Returns number seven
+            {
+            while (PINA.5 == 0);
+            return 7;
+            }
+        if (PINA.6 == 0)    //Returns *
+            {
+            while (PINA.6 == 0);
+            return '*';
+            }
+
+        PORTA.0 = 1;
+        PORTA.1 = 0;
+        PORTA.2 = 1;
+        if (PINA.3 == 0)    //Returns number Two
+            {
+            while (PINA.3 == 0);
+            return 2;
+            }
+        if (PINA.4 == 0)   //Returns number five
+            {
+            while (PINA.4 == 0);
+            return 5;
+            }
+        if (PINA.5 == 0)    //Returns number eight
+            {
+            while (PINA.5 == 0);
+            return 8;
+            }
+        if (PINA.6 == 0)    //Returns number zero
+            {
+            while (PINA.6 == 0);
+            return 0;
+            }
+        PORTA.0 = 1;
+        PORTA.1 = 1;
+        PORTA.2 = 0;
+        if (PINA.3 == 0)    //Returns number three
+            {
+            while (PINA.3 == 0);
+            return 3;
+            }
+        if (PINA.4 == 0)   //Returns number six
+            {
+            while (PINA.4 == 0);
+            return 6;
+            }
+        if (PINA.5 == 0)    //Returns number nine
+            {
+            while (PINA.5 == 0);
+            return 9;
+            }
+        if (PINA.6 == 0)    //Returns #
+            {
+            while (PINA.6 == 0);
+            return '#';
+            }
+
+
+        }
+}
+//EEPROM WRITE fuction 
+void WriteInEEPROM (int EEaddress, char data)
+{
+    while (EECR.1 == 1);
+    EEAR = EEaddress;
+    EEDR = data;
+    EECR.2 = 1;
+    EECR.1 = 1;
+}
+//EEPROM READ Function
+char ReadFromEEPROM (int address)
+{
+    while (EECR.1 == 1);
+    EEAR = address;
+    EECR.0 = 1;
+    return EEDR;
+}
+//entered number function
+char threedigitnumber ()
+{
+    hundreds = getnumberKP();
+    lcd_clear();
+    lcd_printf("You Entered: %d", hundreds);
+    delay_ms(250);
+    lcd_clear();
+    lcd_printf("You Entered: *");
+    tens = getnumberKP();
+    lcd_clear();
+    lcd_printf("You Entered: *%d", tens);
+    delay_ms(250);
+    lcd_clear();
+    lcd_printf("You Entered: **");
+    units = getnumberKP();
+    lcd_clear();
+    lcd_printf("You Entered: **%d", units);
+    delay_ms(250);
+    lcd_clear();
+    lcd_printf("You Entered: ***");
+    number = hundreds * 100 + tens * 10 + units;
+    return number, hundreds, tens, units;
+}
+
+char withoutstar ()
+{
+    hundreds = getnumberKP();
+    lcd_clear();
+    lcd_printf("You Entered: %d", hundreds);
+    tens = getnumberKP();
+    lcd_clear();
+    lcd_printf("You Entered: %d%d", hundreds, tens);
+    units = getnumberKP();
+    lcd_clear();
+    lcd_printf("You Entered: %d%d%d", hundreds, tens, units);
+    delay_ms(2000);
+    number = hundreds * 100 + tens * 10 + units;
+    return number, hundreds, tens, units;
+}
+//to get the number in 8 bit 
+
+//buzzing
+void buzzing ()
+{
+    PORTB.0 = 1;
+    PORTB.3 = 1;
+    delay_ms(500);
+    PORTB.0 = 0;
+    PORTB.3 = 0;
+    delay_ms(500);
+}
+
+//door opening
+void dooropenning ()
+{
+    lcd_clear();
+    PORTB.2 = 1;
+    PORTB.1 = 1;
+    lcd_printfxy(0, 0, "  Door Opened");
+    //lcd_printfxy(0,1,"shut the door !!");
+    delay_ms(2000);
+    lcd_clear();
+    PORTB.1 = 0;
+    PORTB.2 = 0;
+}
+//main fuction
+void main(void)
+{
+    //Keypad Configuration
+    DDRA = 0b00000111;
+    PORTA = 0b11111000;
+    //output intities configuration
+    DDRB.0 = 1;       //buzzer
+    DDRB.1 = 1;      // solenoid lock
+    DDRB.3 = 1;     // alarm led
+    DDRB.2 = 1;    // go ahead led
+
+    // LCD initiation 
+    lcd_init(16);
+    // database 
+   // comment after burning it one time
+   
+     WriteInEEPROM(111,203%256);
+     WriteInEEPROM(126,123%256);
+     WriteInEEPROM(128,315%256);
+     WriteInEEPROM(130,223%256);
+     WriteInEEPROM(132,279%256);
+     
+    //Welcome message when powered or reset
+    lcd_printfxy(5, 0, "Welcome");
+    lcd_printfxy(0, 1, "Smart Lock");
+    delay_ms(2000);
+    lcd_clear();
+    //External Interupt
+    MCUCR |= (1 << 1);      // rising edge INT0
+    MCUCR |= (1 << 0);     //rising edge INT0
+    SREG.7 = 1;           // Global interupt setting
+    GICR |= (1 << 6);    //initiation of INT0
+    //External Interupt 1
+    MCUCR |= (1 << 2);       // rising edge INT1
+    MCUCR |= (1 << 3);      //rising edge INT1
+    SREG.7 = 1;            // Global interupt setting
+    GICR |= (1 << 7);     //initiation of INT0
+
+    while (1)
+        {
+        lcd_printfxy(0, 0, "Press * to enter");
+        button = getnumberKP();
+
+        if (button == '*')
+            {
+            lcd_clear();
+            start = 1;
+            lcd_printf(" Enter your ID !");
+            delay_ms(1000);
+            lcd_clear();
+            while (start == 1)
+                {
+                threedigitnumber ();
+                //lcd_printfxy(0,0,"number = %d%d%d", hundreds,tens,units);
+                //lcd_printfxy(0,1,"number = %d", number);
+                //delay_ms(500);
+                switch (number)
+                    {
+                    case 128 :
+                        {
+                        lcd_clear();
+                        lcd_printf("Hi, Amr.");
+                        lcd_printfxy(0, 1, " Enter your PC!");
+                        threedigitnumber ();
+                        EEnum = number % 256;
+                        if (EEnum ==  ReadFromEEPROM(128))
+                            {
+                            lcd_clear();
+                            lcd_printf("You may Enter.");
+                            delay_ms(1000);
+                            dooropenning ();
+                            delay_ms(1000);
+                            start = 0;
+
+                            }
+                        else
+                            {
+                            lcd_clear();
+                            lcd_printf(" Wrong Password ");
+                            buzzing ();
+                            delay_ms(1000);
+                            start = 0;
+
+                            }
+                        }
+                    break;
+                    case 126 :
+                        {
+                        lcd_clear();
+                        lcd_printf("Hi,Ahmed.");
+                        lcd_printfxy(0, 1, " Enter your PC!");
+                        threedigitnumber ();
+                        EEnum = number;
+                        delay_ms(2000);
+                        
+                        if (EEnum == ReadFromEEPROM(126))
+                            {
+                            lcd_clear();
+                            lcd_printf("You may Enter.");
+                            delay_ms(1000);
+                            dooropenning ();
+                            delay_ms(1000);
+                            start = 0;
+
+                            }
+                        else
+                            {
+                            lcd_clear();
+                            lcd_printf(" Wrong Password ");
+                            buzzing ();
+                            delay_ms(1000);
+                            start = 0;
+
+                            }
+
+                        }
+                    break;
+
+                    case  130:
+                        {
+                        lcd_clear();
+                        lcd_printf("Hi, Adel.");
+                        lcd_printfxy(0, 1, " Enter your PC!");
+                        threedigitnumber ();
+                        EEnum = number % 256;
+                        if (EEnum == ReadFromEEPROM(130))
+                            {
+                            lcd_clear();
+                            lcd_printf("You may Enter.");
+                            delay_ms(1000);
+                            dooropenning ();
+                            delay_ms(1000);
+                            start = 0;
+
+                            }
+                        else
+                            {
+                            lcd_clear();
+                            lcd_printf(" Wrong Password ");
+                            buzzing ();
+                            delay_ms(1000);
+                            start = 0;
+
+                            }
+                        }
+                    break;
+
+                    case 132:
+                        {
+                        lcd_clear();
+                        lcd_printf("Hi, Omar.");
+                        lcd_printfxy(0, 1, " Enter your PC!");
+                        threedigitnumber ();
+                        EEnum = number % 256;
+                        if (EEnum == ReadFromEEPROM(132))
+                            {
+                            lcd_clear();
+                            lcd_printf("You may Enter."); 
+                            delay_ms(1000);
+                            dooropenning ();
+                            delay_ms(1000);
+                            start = 0;
+
+                            }
+                        else
+                            {
+                            lcd_clear();
+                            lcd_printf(" Wrong Password ");
+                            buzzing ();
+                            buzzing ();
+                            delay_ms(1000);
+                            start = 0;
+
+                            }
+                        }
+
+                    break;
+
+                    case 111:
+                        {
+                        lcd_clear();
+                        lcd_printf("Hi, Prof.H.");
+                        lcd_printfxy(0, 1, " Enter your PC!");
+                        threedigitnumber ();
+                        EEnum = number % 256;
+                        if (EEnum == ReadFromEEPROM(111))
+                            {
+                            lcd_clear();
+                            lcd_printf("You may Enter."); 
+                            delay_ms(1000);
+                            dooropenning ();
+                            delay_ms(1000);
+                            start = 0;
+
+                            }
+                        else
+                            {
+                            lcd_clear();
+                            lcd_printf(" Wrong Password ");
+                            buzzing ();
+                            buzzing ();
+                            delay_ms(1000);
+                            start = 0;
+
+                            }
+                        }
+                    break;
+
+                    default:
+                        {
+                     lcd_clear();
+                        lcd_printf(" Wrong ID ");
+                        buzzing ();
+                        start = 0;
+                        delay_ms(1000);
+
+                        }
+                    break;
+                    }
+
+                }
+            }
+
+        else
+            {
+            lcd_clear();
+            lcd_printf("Press * to start");
+            buzzing ();
+            delay_ms(1000);
+            lcd_clear();
+            }
+
+
+
+        } 
+}
+interrupt [2] void Adminaccess (void)
+{    int id;
+     lcd_clear();
+    start = 1;
+    lcd_printfxy(0, 0, "Admin Acess");
+    lcd_printfxy(4, 1, "Requested");
+    delay_ms(2000);
+    lcd_clear();
+    lcd_printf(" Enter Admin PC !");
+    delay_ms(1000);
+    lcd_clear();
+    while (start == 1)
+        {
+        threedigitnumber ();
+        EEnum = number % 256;
+        if (EEnum == ReadFromEEPROM(111) )
+            {
+            lcd_clear();
+            lcd_printf("Enter Student ID");
+            threedigitnumber ();
+            id=number;
+            delay_ms(1000);
+            switch (id)
+                   {
+                   case 111 : 
+                   case 126 : 
+                   case 128 : 
+                   case 130 :
+                   case 132 :         
+                   { lcd_clear();
+                   lcd_printf(" Enter new PC !");
+                   delay_ms(1000);
+                   lcd_clear();
+                   withoutstar ();
+                   EEnum = number % 256;
+                   lcd_clear();
+                   WriteInEEPROM(id, EEnum);
+                   lcd_printf("PC changed !!");
+                   delay_ms(1000);
+                   lcd_clear();
+                   start = 0;
+                   lcd_clear();} 
+                   
+                    break; 
+                   default:
+                        {
+                        lcd_clear();
+                        lcd_printf(" Wrong PC ");
+                        buzzing ();
+                        buzzing ();
+                        start = 0;
+
+                        delay_ms(1000);
+                        }
+                    break;
+                    }
+
+            }
+            else 
+            {
+               lcd_clear();
+               lcd_printf(" Wrong ID ");
+               buzzing ();
+               buzzing ();
+               start = 0;
+               delay_ms(1000);
+              }
+}
+}
+interrupt [3] void change_pass_code (void)
+{           int ID,PC;
+            lcd_clear();
+            start = 1;
+            lcd_printf(" Enter your ID !");
+            delay_ms(1000);
+            lcd_clear();
+            threedigitnumber ();
+            ID=number;
+             switch (ID)
+                   {
+                   case 111 : 
+                   case 126 : 
+                   case 128 : 
+                   case 130 :
+                   case 132 :         
+                   { 
+                   EEnum = ReadFromEEPROM(ID);
+                   lcd_clear();
+                   lcd_printf(" Enter old PC !");
+                   delay_ms(1000);
+                   lcd_clear();
+                   withoutstar ();
+                   PC = number % 256;
+                   lcd_clear();  
+                   if (PC == EEnum) 
+                   {
+                            lcd_clear();
+                            lcd_printf(" Enter new PC !");
+                            delay_ms(1000);
+                            withoutstar ();
+                            EEnum = number % 256;
+                            lcd_clear();
+                            lcd_printf("Re-enter new PC !");
+                            delay_ms(1000);
+                            withoutstar ();
+                            re_enter_store = number % 256;
+                            lcd_clear();
+                            if (re_enter_store == EEnum)
+                                {
+                                WriteInEEPROM(ID,EEnum);
+                                lcd_printf("PC changed !!");
+                                delay_ms(1000);
+                                lcd_clear();
+                                start = 0;
+                                }
+                           else
+                                {
+
+                                lcd_clear();
+                                lcd_printf("Contact Admin");
+                                buzzing ();
+                                buzzing ();
+                                delay_ms(1000);
+                                lcd_clear();
+                                start = 0;
+                                } 
+                                }
+                        else
+                            {
+                            lcd_clear();
+                            lcd_printf("Contact Admin");
+                            buzzing ();
+                            buzzing ();
+                            delay_ms(1000);
+                            lcd_clear();
+                            start = 0;
+                            }
+                   } 
+                    break;
+                   
+                    
+                   default:
+                        {
+                        lcd_clear();
+                        lcd_printf(" Wrong ID ");
+                        buzzing ();
+                        buzzing ();
+                        start = 0;
+
+                        delay_ms(1000);
+                        }
+                    break;
+                    }
+
+}
